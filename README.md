@@ -2,6 +2,8 @@
 
 A collection of command-line tools that enable Claude to analyze and query KiCad PCB projects. These tools extract information from schematic files and parts databases, outputting JSON for easy parsing.
 
+(obviously, claude wrote all of these skills).
+
 ## Available Tools
 
 > **Note:** Keep this list up to date when adding or removing tools.
