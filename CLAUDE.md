@@ -49,9 +49,14 @@ See `skills/kicad-pin-nets.md` for full documentation.
 
 ### jlcpcb-parts-query
 Queries the JLCPCB parts database (~5.8M parts) to find components by search criteria.
+Can also look up properties and datasheet for a specific LCSC part number.
 
 ```bash
+# Search for parts
 python3 skills/jlcpcb_parts_query.py --search "esp32" --in-stock --limit 10
+
+# Look up a specific LCSC part number
+python3 skills/jlcpcb_parts_query.py --search "C82899"
 ```
 
 Options:
@@ -81,3 +86,9 @@ easyeda2kicad --full  --output ~/kicad/user-kicad-library/easyeda2kicad --lcsc_i
 
 Tool to parse kicad schematic files into python objects:
 /home/harry/kiutils
+
+kicad-cli:
+Command-line tool for exporting (Gerbers, drill, BOM, PDF, netlist), running DRC/ERC checks, and rendering 3D views without opening the GUI.
+
+pdftotext:
+Use `pdftotext <file.pdf> -` to extract text from datasheet PDFs pulled from database searches. Useful for reading component specifications, pinouts, and electrical characteristics.

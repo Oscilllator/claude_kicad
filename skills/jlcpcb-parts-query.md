@@ -4,6 +4,8 @@
 
 This skill queries the JLCPCB parts database (~5.8 million parts) to find components by search criteria. It uses SQLite FTS5 full-text search for fast querying and outputs results as JSON.
 
+Can also be used to look up the properties and datasheet of a specific LCSC part number (e.g., `--search "C82899"`).
+
 ## Database Location
 
 The skill checks for the database in order:
@@ -30,6 +32,12 @@ python3 /home/harry/claude_kicad/skills/jlcpcb_parts_query.py [OPTIONS]
 At least one search criteria (`--search`, `--category`, `--package`, or `--manufacturer`) is required.
 
 ## Examples
+
+Look up a specific LCSC part number (get properties and datasheet):
+```bash
+python3 /home/harry/claude_kicad/skills/jlcpcb_parts_query.py \
+  --search "C82899"
+```
 
 Find ESP32 modules in stock:
 ```bash
