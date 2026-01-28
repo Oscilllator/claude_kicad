@@ -135,6 +135,15 @@ If database not found:
 - Automatic database download if needed
 - No KiCad dependency (standalone script)
 
+## Tips
+
+Extract specs from datasheets using wget + pdftotext:
+```bash
+# Get datasheet URL from query results, then:
+wget -q "<datasheet_url>" -O /tmp/part.pdf
+pdftotext /tmp/part.pdf - | grep -i "i2c\|address\|current"
+```
+
 ## Notes
 
 - The database is approximately 1.5GB when extracted

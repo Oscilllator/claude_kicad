@@ -58,7 +58,7 @@ The script outputs JSON to stdout with all properties of the component:
 - `Datasheet`: Link to datasheet (~ if none)
 - `Description`: Component description
 - `_source_file`: The schematic file where the component was found
-- Additional custom properties defined in the schematic
+- `LCSC Part`: LCSC/JLCPCB part number (if assigned) - use with `jlcpcb_parts_query.py` to get datasheet
 
 ### Error Output
 

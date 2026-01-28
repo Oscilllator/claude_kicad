@@ -67,16 +67,24 @@ Output:
 }
 ```
 
-### Workflow Example: Find I2C Bus Components
+### Workflow Example: Trace Through Series Resistors
 
 ```bash
-# Step 1: Find what nets U101 is connected to
-python3 skills/kicad_pin_nets.py -p /home/harry/kicad/wedding_invite -r U101
-# See that pin 31 (IO19) is on /SCL2
+# Step 1: Find what nets a component is connected to
+python3 skills/kicad_pin_nets.py -p project -r U104
+# See TXD on "Net-(U104-TXD)"
 
-# Step 2: Find all components on the SCL2 bus
-python3 skills/kicad_pin_nets.py -p /home/harry/kicad/wedding_invite -n /SCL2
-# Returns R107, R112, R128, R155, U101
+# Step 2: Query that net to find the series resistor
+python3 skills/kicad_pin_nets.py -p project -n "Net-(U104-TXD)"
+# Returns U104 pin 2, R119 pin 1
+
+# Step 3: Query the resistor to find the destination net
+python3 skills/kicad_pin_nets.py -p project -r R119
+# Returns pin 1 = Net-(U104-TXD), pin 2 = /eRX
+
+# Step 4: Query destination net for final component
+python3 skills/kicad_pin_nets.py -p project -n /eRX
+# Returns R119 pin 2, U101 pin 34 (RXD0)
 ```
 
 ## Net Name Matching
