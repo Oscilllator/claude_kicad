@@ -3,13 +3,15 @@
 KiCad Pin-to-Net Connections Extractor
 
 Lists each pin of a component and what net it's connected to,
-given a project path and reference designator.
+or lists all pins connected to a specific net.
 
 Usage:
     python3 kicad_pin_nets.py --project <project_dir> --ref <reference>
+    python3 kicad_pin_nets.py --project <project_dir> --net <net_name>
 
-Example:
+Examples:
     python3 kicad_pin_nets.py --project /home/harry/kicad/wedding_invite --ref U101
+    python3 kicad_pin_nets.py --project /home/harry/kicad/wedding_invite --net /SCL2
 """
 
 import argparse
@@ -196,6 +198,59 @@ def build_pin_net_index(netlist_sexp: Any) -> dict[tuple[str, str], tuple[str, s
     return index
 
 
+def build_net_pins_index(netlist_sexp: Any) -> dict[str, list[dict]]:
+    """Build an index mapping net_name to list of pins.
+
+    Returns:
+        Dictionary where keys are net names and values are lists of pin info dicts.
+    """
+    index = {}
+
+    # Find the nets section
+    nets_sections = find_elements(netlist_sexp, 'nets')
+    if not nets_sections:
+        return index
+
+    nets_section = nets_sections[0]
+
+    # Process each net
+    for net in find_elements(nets_section, 'net'):
+        net_name = get_element_value(net, 'name') or ''
+        pins = []
+
+        # Process each node in this net
+        for node in find_elements(net, 'node'):
+            ref = get_element_value(node, 'ref')
+            pin = get_element_value(node, 'pin')
+            pinfunction = get_element_value(node, 'pinfunction') or ''
+
+            if ref and pin:
+                pins.append({
+                    'reference': ref,
+                    'pin_number': pin,
+                    'pin_name': pinfunction
+                })
+
+        if pins:
+            index[net_name] = pins
+
+    return index
+
+
+def get_all_net_names(netlist_sexp: Any) -> set[str]:
+    """Get all net names from the netlist."""
+    names = set()
+
+    nets_sections = find_elements(netlist_sexp, 'nets')
+    if nets_sections:
+        for net in find_elements(nets_sections[0], 'net'):
+            name = get_element_value(net, 'name')
+            if name:
+                names.add(name)
+
+    return names
+
+
 def get_component_refs(netlist_sexp: Any) -> set[str]:
     """Get all component reference designators from the netlist."""
     refs = set()
@@ -272,19 +327,100 @@ def get_component_pin_nets(project_dir: Path, ref: str) -> dict:
     }
 
 
+def get_net_pins(project_dir: Path, net_name: str) -> dict:
+    """Get all pins connected to a specific net.
+
+    Args:
+        project_dir: Path to the KiCad project directory
+        net_name: Name of the net to query
+
+    Returns:
+        Dictionary with net info and connected pins
+    """
+    # Find root schematic
+    root_sch = find_root_schematic(project_dir)
+    if not root_sch:
+        return {'error': f'No schematic files found in {project_dir}'}
+
+    # Export netlist
+    try:
+        netlist_content = export_netlist(root_sch)
+    except RuntimeError as e:
+        return {'error': str(e)}
+    except FileNotFoundError:
+        return {'error': 'kicad-cli not found. Please ensure KiCad is installed.'}
+
+    # Parse netlist
+    netlist_sexp = parse_sexp_string(netlist_content)
+    if not netlist_sexp:
+        return {'error': 'Failed to parse netlist'}
+
+    # Build net-to-pins index
+    net_index = build_net_pins_index(netlist_sexp)
+
+    # Try exact match first
+    if net_name in net_index:
+        pins = net_index[net_name]
+    else:
+        # Try case-insensitive and partial matching
+        matching_nets = []
+        net_name_lower = net_name.lower()
+        for name in net_index.keys():
+            if name.lower() == net_name_lower:
+                matching_nets.append(name)
+            elif net_name_lower in name.lower():
+                matching_nets.append(name)
+
+        if not matching_nets:
+            return {'error': f'Net "{net_name}" not found in project'}
+        elif len(matching_nets) == 1:
+            net_name = matching_nets[0]
+            pins = net_index[net_name]
+        else:
+            # Multiple matches - return the list
+            return {
+                'error': f'Multiple nets match "{net_name}"',
+                'matches': sorted(matching_nets)
+            }
+
+    # Sort pins by reference designator
+    def pin_sort_key(p):
+        # Extract prefix and number from reference (e.g., "R124" -> ("R", 124))
+        ref = p['reference']
+        prefix = ''.join(c for c in ref if c.isalpha())
+        num_str = ''.join(c for c in ref if c.isdigit())
+        try:
+            num = int(num_str) if num_str else 0
+        except ValueError:
+            num = 0
+        return (prefix, num, p['pin_number'])
+
+    pins.sort(key=pin_sort_key)
+
+    return {
+        'net': net_name,
+        'pins': pins
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description='List pin-to-net connections for a component in a KiCad project'
+        description='List pin-to-net connections for a component, or pins connected to a net'
     )
     parser.add_argument(
         '--project', '-p',
         required=True,
         help='Path to the KiCad project directory'
     )
-    parser.add_argument(
+
+    query_group = parser.add_mutually_exclusive_group(required=True)
+    query_group.add_argument(
         '--ref', '-r',
-        required=True,
         help='Reference designator of the component (e.g., U101, R1, C5)'
+    )
+    query_group.add_argument(
+        '--net', '-n',
+        help='Net name to find all connected pins (e.g., /SCL2, GND, +3.3V)'
     )
 
     args = parser.parse_args()
@@ -294,7 +430,10 @@ def main():
         print(json.dumps({'error': f'Project directory not found: {args.project}'}))
         sys.exit(1)
 
-    result = get_component_pin_nets(project_dir, args.ref)
+    if args.ref:
+        result = get_component_pin_nets(project_dir, args.ref)
+    else:
+        result = get_net_pins(project_dir, args.net)
 
     print(json.dumps(result, indent=2))
 

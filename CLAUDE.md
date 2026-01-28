@@ -35,10 +35,14 @@ python3 skills/kicad_component_props.py --project <project_dir> --ref <reference
 See `skills/kicad-component-props.md` for full documentation.
 
 ### kicad-pin-nets
-Lists each pin of a component and what net it's connected to.
+Lists pin-to-net connections. Supports two query modes:
 
 ```bash
+# Query by component - list all pins and their nets
 python3 skills/kicad_pin_nets.py --project <project_dir> --ref <reference>
+
+# Query by net - list all pins connected to a net
+python3 skills/kicad_pin_nets.py --project <project_dir> --net <net_name>
 ```
 
 See `skills/kicad-pin-nets.md` for full documentation.
